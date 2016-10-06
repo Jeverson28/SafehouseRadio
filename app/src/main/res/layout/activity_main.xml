@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:orientation="vertical"
+    tools:context="com.example.james.safehouseradio.MainActivity">
+
+    <TextView
+        android:id="@+id/radioTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/radio_title"
+        android:textColor="@color/colorDarkTitleText"
+        android:textSize="40sp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="8dp"/>
+    
+    <TextView
+        android:id="@+id/radioSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/radio_description"
+        android:textColor="@color/colorDarkSubtitleText"
+        android:textSize="15sp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="16dp"/>
+
+    <ImageView
+        android:id="@+id/radioImage"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent"
+        android:src="@drawable/logo_with_mic_background"
+        android:contentDescription="@string/radio_image_description"
+        android:elevation="7dp"/>
+
+    <TextView
+        android:id="@+id/now_playing"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/now_playing_text"
+        android:maxLines="1"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:scrollHorizontally="true"
+        android:textColor="@color/colorDarkSubtitleText"
+        android:textSize="15sp"
+        android:layout_gravity="center"
+        android:layout_marginTop="15dp"
+        android:layout_marginBottom="15dp"/>
+
+    <RelativeLayout
+        android:id="@+id/media_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/playButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_play_arrow_white_48dp"
+            android:onClick="radioPlay"
+            android:contentDescription="@string/play_button"
+            android:background="@android:color/transparent"
+            android:layout_centerHorizontal="true"
+            android:scaleType="centerCrop"
+            android:layout_marginLeft="10dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginEnd="10dp"/>
+
+        <ImageButton
+            android:id="@+id/stopButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_stop_white_48dp"
+            android:onClick="radioStop"
+            android:contentDescription="@string/stop_button"
+            android:background="@android:color/transparent"
+            android:layout_toLeftOf="@id/playButton"
+            android:layout_toStartOf="@id/playButton"
+            android:scaleType="centerCrop"/>
+
+        <ImageButton
+            android:id="@+id/pauseButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_pause_white_48dp"
+            android:onClick="radioPause"
+            android:contentDescription="@string/pause_button"
+            android:background="@android:color/transparent"
+            android:layout_toRightOf="@id/playButton"
+            android:layout_toEndOf="@id/playButton"
+            android:scaleType="centerCrop"/>
+    </RelativeLayout>
+</LinearLayout>

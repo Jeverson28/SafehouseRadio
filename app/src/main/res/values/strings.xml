@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Safehouse Radio</string>
+    <string name="radio_title">Safehouse Radio</string>
+    <string name="radio_description">Upfront and Underground Dance Radio</string>
+    <string name="play_button">Play button</string>
+    <string name="pause_button">Pause button</string>
+    <string name="stop_button">Stop button</string>
+    <string name="radio_image_description">Safehouse Radio Image</string>
+    <string name="now_playing_text">Now playing: %1$s</string>
+</resources>
