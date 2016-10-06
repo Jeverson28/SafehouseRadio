@@ -18,6 +18,7 @@ import android.os.AsyncTask;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
+import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
@@ -38,6 +39,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
 
     //TODO MediaSessionCompat
     //TODO onCreate Find Stream and song name. Update now playing!
+    //TODO Update intents to use media buttons
 
     //Fields
     private MediaPlayer player = null;
@@ -64,7 +66,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     private final String UPDATE_NAME = "update_name";
 
     //System
-    //private MediaSessionCompat mySession;
+    private MediaSessionCompat mySession;
     //private BroadcastReceiver connectivityReceiver;
 
     @Override
@@ -95,6 +97,9 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startid) {
+        super.onStartCommand(intent, flags, startid);
+        MediaButtonReceiver.handleIntent(mySession, intent);
+        //TODO Above code needs MediaSessionCompat callbacks
         String action = "";
         if (intent != null) {
             action = intent.getAction();
