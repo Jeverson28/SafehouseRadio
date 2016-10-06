@@ -8,19 +8,18 @@ import org.json.JSONObject;
 
 class JsonParser {
 
+    private static final String autoDjStream = "http://eu3.radioboss.fm:8113/autodj";
+    private static final String liveStream = "http://eu3.radioboss.fm:8113/live";
+
     static String getSongName(String json, String stream) {
         String songName = "";
         try {
             JSONArray sources = getSources(json);
-            if (sources != null) {
-                for (int i = 0; i < sources.length(); i++) {
-                    JSONObject source = sources.getJSONObject(i);
-                    if (source.getString("listenurl").equals(stream) && source.has("yp_currently_playing")) {
-                        songName = source.getString("yp_currently_playing");
-                    }
+            for (int i = 0; i < sources.length(); i++) {
+                JSONObject source = sources.getJSONObject(i);
+                if (source.getString("listenurl").equals(stream)) {
+                    songName = stream.equals(liveStream) ? source.getString("server_name") : source.getString("yp_currently_playing");
                 }
-            } else {
-                songName = "Could not get song name";
             }
         } catch (JSONException e) {
             Log.e("JsonParser", e.getMessage());
@@ -30,20 +29,20 @@ class JsonParser {
     }
 
     static String getStreamUrl(String json) {
-        String url = "http://eu3.radioboss.fm:8113/autodj";
+        String url = autoDjStream;
         JSONArray sources = getSources(json);
         try {
             for (int i = 0; i < sources.length(); i++) {
                 JSONObject source = sources.getJSONObject(i);
-                if (source.getString("listenurl").equals("http://eu3.radioboss.fm:8113/live")) {
+                if (source.getString("listenurl").equals(liveStream)) {
                     if (source.length() > 3) {
-                        url = source.getString("listenurl");
+                        url = liveStream;
                     }
                 }
             }
         } catch (JSONException e) {
             Log.e("JsonParser", e.getMessage());
-            url = "http://eu3.radioboss.fm:8113/autodj";
+            url = autoDjStream;
         }
         return url;
     }

@@ -37,7 +37,7 @@ import java.util.TimerTask;
 public class PlayerService extends Service implements MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener, AudioManager.OnAudioFocusChangeListener {
 
     //TODO MediaSessionCompat
-
+    //TODO onCreate Find Stream and song name. Update now playing!
 
     //Fields
     private MediaPlayer player = null;
@@ -50,7 +50,6 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     private String currentStream = "";
 
     //Constants
-    private final static String TAG = "PlayerService";
     public final static int MUSIC_PLAYING_NOTIFICATION_ID = 1;
     public final static String ACTION_STOP_RADIO = "com.example.james.safehouseradio.STOP";
     public final static String ACTION_PLAY_RADIO = "com.example.james.safehouseradio.PLAY_UPDATE";
@@ -58,6 +57,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     public final static String ACTION_GET_SONG_NAME = "com.example.james.safehouseradio.SONG_NAME";
     public final static String ACTION_GET_PLAYER_STATE = "com.example.james.safehouseradio.PLAYER_STATE";
     public final static String SAFEHOUSE_INTENT_FILTER = "com.example.james.safehouseradio.SAFEHOUSE_INTENT_FILTER";
+    private final static String TAG = "PlayerService";
     private final String UPDATE_PLAY = "update_play";
     private final String UPDATE_PAUSE = "update_pause";
     private final String CREATE_NOTIFICATION = "create_notification";
@@ -362,7 +362,6 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
         prepareForPlayback();
         if (currentStream.equals("http://eu3.radioboss.fm:8113/live")) {
             songTimer.cancel();
-            currentSong = "Live - ";
             sendSongNameChangeBroadcast();
         } else {
             songTimer.schedule(new NameCheck(), 10000, 10000);
@@ -606,11 +605,10 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
         public void run() {
             InputStream in = null;
             try {
+                Log.d(TAG, "Song name check...");
                 in = new URL("http://eu3.radioboss.fm:8113/status-json.xsl").openStream();
                 String name = JsonParser.getSongName(getStringFromInputStream(in), currentStream);
-                if (!currentSong.equals(name)) {
-                    currentSong = name;
-                }
+                currentSong = currentStream.equals("http://eu3.radioboss.fm:8113/live") ? "Live - " + name : name;
                 sendSongNameChangeBroadcast();
                 updateNotification(UPDATE_NAME);
             } catch (MalformedURLException e) {

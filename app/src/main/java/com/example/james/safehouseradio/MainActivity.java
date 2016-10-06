@@ -17,8 +17,8 @@ import android.widget.TextView;
 public class MainActivity extends AppCompatActivity {
 
     //TODO Add share buttons
-    //TODO Add settings to keep screen on?
-    //TODO Keep Now Playing state on orientation state
+    //TODO Add settings to keep screen on, headphone stopping?
+    //TODO Loading when no internet
 
     private ImageButton mPlayButton, mStopButton, mPauseButton;
     private TextView mNowPlayingTextView;
@@ -111,6 +111,19 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         unregisterReceiver(mReceiver);
         Log.d(TAG, "Receiver unregistered");
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        // Save the values you need from your textview into "outState"-object
+        outState.putString("Now Playing", mNowPlayingTextView.getText().toString());
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        mNowPlayingTextView.setText(savedInstanceState.getString("Now Playing"));
     }
 
     /**

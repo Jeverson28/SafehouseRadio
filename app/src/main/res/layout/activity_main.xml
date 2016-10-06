@@ -38,7 +38,7 @@
         android:background="@android:color/transparent"
         android:src="@drawable/logo_with_mic_background"
         android:contentDescription="@string/radio_image_description"
-        android:elevation="7dp"/>
+        android:elevation="7dp" />
 
     <TextView
         android:id="@+id/now_playing"
