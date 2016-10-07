@@ -18,8 +18,10 @@ import android.os.AsyncTask;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
@@ -67,6 +69,8 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
 
     //System
     private MediaSessionCompat mySession;
+    private AudioManager mAudioManager;
+    private MediaSessionCompat.Token sessionToken;
     //private BroadcastReceiver connectivityReceiver;
 
     @Override
@@ -98,46 +102,49 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     @Override
     public int onStartCommand(Intent intent, int flags, int startid) {
         super.onStartCommand(intent, flags, startid);
-        MediaButtonReceiver.handleIntent(mySession, intent);
-        //TODO Above code needs MediaSessionCompat callbacks
+        ComponentName mediaButtonReceiver =
+                new ComponentName(getApplicationContext(), RemoteControlReceiver.class);
+        mySession = new MediaSessionCompat(getApplicationContext(), TAG, mediaButtonReceiver, null);
+        mySession.setFlags(
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
+                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        //sessionToken = mySession.getSessionToken();
+        mySession.setCallback(new MediaSessionCompat.Callback() {
+            @Override
+            public void onPlay() {
+                super.onPlay();
+                playMusic();
+            }
+
+            @Override
+            public void onPause() {
+                super.onPause();
+                pauseMusic();
+            }
+
+            @Override
+            public void onStop() {
+                super.onStop();
+                stopMusic();
+            }
+        });
+        mySession.setActive(true);
         String action = "";
-        if (intent != null) {
+        if (intent == null) {
+            Log.d(TAG, "Intent passed to this service was null");
+            stopSelf();
+        } else {
             action = intent.getAction();
         }
         switch (action) {
             case ACTION_PLAY_RADIO:
-                if (player == null) {
-                    //Player needs to be initialised
-                    initMediaPlayer();
-                } else if (!player.isPlaying()) {
-                    Log.d(TAG, "Player starting...");
-                    player.start();
-                    //Remove pause and replace with play
-                    doNotification(UPDATE_PLAY);
-                    Intent playIntent = new Intent(SAFEHOUSE_INTENT_FILTER)
-                            .putExtra("action", ACTION_PLAY_RADIO);
-                    sendBroadcast(playIntent);
-                    Log.d(TAG, "PLAY_RADIO broadcast sent");
-                }
+                playMusic();
                 break;
             case ACTION_PAUSE_RADIO:
-                if (player != null) {
-                    player.pause();
-                    //Remove play and replace with pause
-                    doNotification(UPDATE_PAUSE);
-                    Intent pauseIntent = new Intent(SAFEHOUSE_INTENT_FILTER)
-                            .putExtra("action", ACTION_PAUSE_RADIO);
-                    sendBroadcast(pauseIntent);
-                    Log.d(TAG, "PAUSE_RADIO broadcast sent");
-                }
+                pauseMusic();
                 break;
             case ACTION_STOP_RADIO:
-                Log.d(TAG, "Player stopping");
-                player.stop();
-                Intent stopRadio = new Intent(SAFEHOUSE_INTENT_FILTER)
-                        .putExtra("action", ACTION_STOP_RADIO);
-                sendBroadcast(stopRadio);
-                releaseMediaPlayer();
+                stopMusic();
                 break;
             case ACTION_GET_SONG_NAME:
                 Log.d(TAG, "Returning song name");
@@ -154,22 +161,10 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
                 }
                 break;
             default:
-                Log.d(TAG, "Intent passed to this service was null");
-                stopSelf();
+                MediaButtonReceiver.handleIntent(mySession, intent);
                 break;
         }
         return Service.START_STICKY;
-    }
-
-    private void broadcastState() {
-        boolean isPlaying = player != null && player.isPlaying();
-        boolean isPaused = player != null && !player.isPlaying();
-        Intent playerStateIntent = new Intent(SAFEHOUSE_INTENT_FILTER)
-                .putExtra("action", ACTION_GET_PLAYER_STATE)
-                .putExtra("isPlaying", isPlaying)
-                .putExtra("isPaused", isPaused);
-        sendBroadcast(playerStateIntent);
-        Log.d(TAG, "PLAYER_STATE broadcast sent");
     }
 
     @Override
@@ -200,7 +195,8 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
             }
             wifiLock = null;
         }
-
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        mAudioManager.abandonAudioFocus(this);
         //unregisterReceiver(connectivityReceiver);
         Log.d(TAG, "Service Destroyed");
     }
@@ -209,15 +205,23 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     public void onPrepared(MediaPlayer mediaPlayer) {
         Log.d(TAG, "Player prepared!");
         sendCancelProgressBroadcast();
-
         Log.d(TAG, "Requesting audio focus");
-        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        int result = audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC,
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int result = mAudioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC,
                 AudioManager.AUDIOFOCUS_GAIN);
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             Log.d(TAG, "Audio focus gained");
             Log.d(TAG, "Starting media player");
             player.start();
+            MediaMetadataCompat metadata = getDefaultMetadata();
+            MediaMetadataCompat.Builder metadataBuilder = new MediaMetadataCompat.Builder(metadata);
+            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, currentSong);
+            mySession.setMetadata(metadataBuilder.build());
+            PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
+            stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1);
+            //TODO SET ACTIONS
+            mySession.setPlaybackState(stateBuilder.build());
+            //TODO Update metadata and state (state and actions) whenever things change
             Log.d(TAG, "Player started");
             doNotification(CREATE_NOTIFICATION);
             songTimer = new Timer();
@@ -265,6 +269,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
                         broadcastState();
                     }
                     releaseMediaPlayer();
+                    mAudioManager.abandonAudioFocus(this);
                 }
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
@@ -304,6 +309,43 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
         stopSelf();
     }
 
+    private void playMusic() {
+        if (player == null) {
+            //Player needs to be initialised
+            initMediaPlayer();
+        } else if (!player.isPlaying()) {
+            Log.d(TAG, "Player starting...");
+            player.start();
+            //Remove pause and replace with play
+            doNotification(UPDATE_PLAY);
+            Intent playIntent = new Intent(SAFEHOUSE_INTENT_FILTER)
+                    .putExtra("action", ACTION_PLAY_RADIO);
+            sendBroadcast(playIntent);
+            Log.d(TAG, "PLAY_RADIO broadcast sent");
+        }
+    }
+
+    private void pauseMusic() {
+        if (player != null) {
+            player.pause();
+            //Remove play and replace with pause
+            doNotification(UPDATE_PAUSE);
+            Intent pauseIntent = new Intent(SAFEHOUSE_INTENT_FILTER)
+                    .putExtra("action", ACTION_PAUSE_RADIO);
+            sendBroadcast(pauseIntent);
+            Log.d(TAG, "PAUSE_RADIO broadcast sent");
+        }
+    }
+
+    private void stopMusic() {
+        Log.d(TAG, "Player stopping");
+        player.stop();
+        Intent stopRadio = new Intent(SAFEHOUSE_INTENT_FILTER)
+                .putExtra("action", ACTION_STOP_RADIO);
+        sendBroadcast(stopRadio);
+        releaseMediaPlayer();
+    }
+
     /**
      * Starts GetStreamTask AsyncTask, which itself calls prepareForPlayBack(String url)
      */
@@ -339,8 +381,15 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
         }
     }
 
+    public MediaMetadataCompat getDefaultMetadata() {
+        return new MediaMetadataCompat.Builder()
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, BitmapFactory.decodeResource(getResources(), R.drawable.logo_with_mic_background))
+            .build();
+    }
+
     /**
      * Given an InputStream this method will translate it to a String object.
+     *
      * @param inputStream InputStream object to be used
      * @return String. String representation of the inputStream parameter
      */
@@ -427,6 +476,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     /**
      * Creates a notification that indicates music is playing. Includes two actions: pause and stop.
      * Pause will pause the current playing music, and stop will stop the music and stop the service
+     *
      * @return Notification. A notification that indicates music is playing.
      */
     private Notification getPlayingNotification() {
@@ -447,6 +497,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     /**
      * Creates a notification that indicates music is paused. Includes two actions: play and stop.
      * Play will resume playback, and stop will end the service.
+     *
      * @return Notification. A notification indicating music is paused.
      */
     private Notification getPausedNotification() {
@@ -477,6 +528,17 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
         Log.d(TAG, "GET_SONG broadcast sent");
     }
 
+    private void broadcastState() {
+        boolean isPlaying = player != null && player.isPlaying();
+        boolean isPaused = player != null && !player.isPlaying();
+        Intent playerStateIntent = new Intent(SAFEHOUSE_INTENT_FILTER)
+                .putExtra("action", ACTION_GET_PLAYER_STATE)
+                .putExtra("isPlaying", isPlaying)
+                .putExtra("isPaused", isPaused);
+        sendBroadcast(playerStateIntent);
+        Log.d(TAG, "PLAYER_STATE broadcast sent");
+    }
+
     private void sendShowProgressBroadcast() {
         Intent showProgress = new Intent(SAFEHOUSE_INTENT_FILTER)
                 .putExtra("action", MainActivity.SHOW_PROGRESS_DIALOGUE);
@@ -494,6 +556,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     /**
      * Gets a "start activity" PendingIntent for use in a notification for this application. Will
      * start the MainActivity class
+     *
      * @return PendingIntent. PendingIntent that starts MainActivity
      */
     private PendingIntent getStartPendingIntent() {
@@ -505,6 +568,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     /**
      * Gets a "play music" PendingIntent for use in an action for a notification in this application.
      * Will resume playback of the MediaPlayer.
+     *
      * @return PendingIntent. PendingIntent that resumes playback.
      */
     private PendingIntent getPlayPendingIntent() {
@@ -516,6 +580,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     /**
      * Gets a "stop music" PendingIntent for use in an action for a notification in this application.
      * Will stop playback of the MediaPlayer and end the service.
+     *
      * @return PendingIntent. PendingIntent that stops playback and ends the Service.
      */
     private PendingIntent getStopPendingIntent() {
@@ -527,6 +592,7 @@ public class PlayerService extends Service implements MediaPlayer.OnPreparedList
     /**
      * Gets a "pause music" PendingIntent for use in an action for a notification in this application.
      * Will pause playback of the MediaPlayer.
+     *
      * @return PendingIntent. PendingIntent that pauses playback
      */
     private PendingIntent getPausePendingIntent() {

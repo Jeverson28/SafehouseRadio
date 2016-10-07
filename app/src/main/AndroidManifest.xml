@@ -28,7 +28,7 @@
                 <action android:name="android.media.AUDIO_BECOMING_NOISY" />
             </intent-filter>
         </receiver>
-        <receiver android:name="android.support.v4.media.session.MediaButtonReceiver" >
+        <receiver android:name=".RemoteControlReceiver" >
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
